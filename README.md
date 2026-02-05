@@ -211,6 +211,17 @@ WECOM_AGENT_ID=1000001               # App AgentId
 
 > ⚠️ **Permissions**: Address book API requires "Contacts" read permission configured for the app in WeCom Admin Console.
 
+### 🧑 User Identity Recognition
+
+When `corpId` and `secret` are configured, the plugin automatically fetches the user's real name via the Address Book API, allowing the AI to identify message senders:
+
+| Config Status      | AI Sees Sender As   |
+| ------------------ | ------------------- |
+| API not configured | `zhangsan` (userId) |
+| API configured     | `张三` (real name)  |
+
+This enables the AI to address users correctly, e.g., "Sure, Zhang San, I'll help you with that."
+
 ## 🤖 Dynamic Agent Routing
 
 The plugin implements per-user/per-group isolation:

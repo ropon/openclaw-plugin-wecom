@@ -8,6 +8,7 @@ import {
   extractGroupMessageContent,
 } from "./dynamic-agent.js";
 import { processIncomingMessage, formatForAI } from "./message-handler.js";
+import { getUserInfo } from "./contact-api.js";
 
 const DEFAULT_ACCOUNT_ID = "default";
 
@@ -758,8 +759,40 @@ async function processInboundMessage({
     sessionKey: route.sessionKey,
   });
 
-  // 构建消息头，群聊时显示发送者
-  const senderLabel = isGroupChat ? `[${senderId}]` : senderId;
+  // ========================================================================
+  // 获取用户真实姓名（如果配置了通讯录 API）
+  // ========================================================================
+  let senderName = senderId; // 默认使用 userId
+  let senderDepartment = "";
+
+  const corpId = config?.wecom?.corpId;
+  const secret = config?.wecom?.secret;
+
+  if (corpId && secret) {
+    try {
+      const userInfo = await getUserInfo(corpId, secret, senderId);
+      if (userInfo && userInfo.name) {
+        senderName = userInfo.name;
+        // 获取部门信息（如果有）
+        if (userInfo.department && userInfo.department.length > 0) {
+          senderDepartment = userInfo.main_department_name || "";
+        }
+        logger.debug("Got user real name", {
+          userId: senderId,
+          name: senderName,
+          department: senderDepartment,
+        });
+      }
+    } catch (error) {
+      logger.warn("Failed to get user info, using userId as name", {
+        error: error.message,
+        userId: senderId,
+      });
+    }
+  }
+
+  // 构建消息头，群聊时显示发送者姓名
+  const senderLabel = isGroupChat ? `[${senderName}]` : senderName;
   const body = core.reply.formatAgentEnvelope({
     channel: isGroupChat ? "Enterprise WeChat Group" : "Enterprise WeChat",
     from: senderLabel,
@@ -778,8 +811,8 @@ async function processInboundMessage({
     SessionKey: route.sessionKey,
     AccountId: route.accountId,
     ChatType: isGroupChat ? "group" : "direct",
-    ConversationLabel: isGroupChat ? `群聊 ${chatId}` : senderId,
-    SenderName: senderId,
+    ConversationLabel: isGroupChat ? `群聊 ${chatId}` : senderName,
+    SenderName: senderName,
     SenderId: senderId,
     GroupId: isGroupChat ? chatId : undefined,
     Provider: "wecom",
