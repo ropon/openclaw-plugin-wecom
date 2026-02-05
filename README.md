@@ -160,6 +160,57 @@ openclaw-plugin-wecom/
 └── logger.js                    # Logging module
 ```
 
+## 🔧 WeCom API Configuration
+
+In addition to the basic bot callback settings, the following advanced features require WeCom API credentials:
+
+| Feature                             | Required Config                 |
+| ----------------------------------- | ------------------------------- |
+| Get user details (name, department) | `corpId` + `secret`             |
+| Push messages proactively           | `corpId` + `secret` + `agentId` |
+| Upload/download media files         | `corpId` + `secret`             |
+| Download voice messages             | `corpId` + `secret`             |
+| Address book search                 | `corpId` + `secret`             |
+
+### How to Obtain Credentials
+
+| Config    | Location                                                    |
+| --------- | ----------------------------------------------------------- |
+| `corpId`  | WeCom Admin Console → My Enterprise → Enterprise ID         |
+| `secret`  | WeCom Admin Console → App Management → Custom App → Secret  |
+| `agentId` | WeCom Admin Console → App Management → Custom App → AgentId |
+
+### Environment Variables
+
+Add to your `.env` file:
+
+```bash
+# WeCom API Configuration (Optional)
+WECOM_CORP_ID=ww1234567890abcdef     # Enterprise ID
+WECOM_SECRET=your-app-secret-here    # App Secret
+WECOM_AGENT_ID=1000001               # App AgentId
+```
+
+### Configuration Example
+
+```json
+{
+  "channels": {
+    "wecom": {
+      "enabled": true,
+      "token": "your-token",
+      "encodingAesKey": "your-aes-key",
+      "webhookPath": "/wecom",
+      "corpId": "ww1234567890abcdef",
+      "secret": "your-app-secret",
+      "agentId": "1000001"
+    }
+  }
+}
+```
+
+> ⚠️ **Permissions**: Address book API requires "Contacts" read permission configured for the app in WeCom Admin Console.
+
 ## 🤖 Dynamic Agent Routing
 
 The plugin implements per-user/per-group isolation:

@@ -160,6 +160,57 @@ openclaw-plugin-wecom/
 └── logger.js                    # 日志模块
 ```
 
+## 🔧 企业微信 API 配置
+
+除了基础的机器人回调配置外，如需使用以下高级功能，还需要配置企业微信 API：
+
+| 功能                           | 需要的配置                      |
+| ------------------------------ | ------------------------------- |
+| 获取用户详细信息（姓名、部门） | `corpId` + `secret`             |
+| 主动推送消息给用户             | `corpId` + `secret` + `agentId` |
+| 上传/下载媒体文件              | `corpId` + `secret`             |
+| 语音消息下载                   | `corpId` + `secret`             |
+| 通讯录搜索                     | `corpId` + `secret`             |
+
+### 配置获取方式
+
+| 配置项    | 获取路径                                         |
+| --------- | ------------------------------------------------ |
+| `corpId`  | 企业微信管理后台 → 我的企业 → 企业ID             |
+| `secret`  | 企业微信管理后台 → 应用管理 → 自建应用 → Secret  |
+| `agentId` | 企业微信管理后台 → 应用管理 → 自建应用 → AgentId |
+
+### 环境变量配置
+
+在 `.env` 文件中添加：
+
+```bash
+# 企业微信 API 配置（可选）
+WECOM_CORP_ID=ww1234567890abcdef     # 企业ID
+WECOM_SECRET=your-app-secret-here    # 应用密钥
+WECOM_AGENT_ID=1000001               # 应用AgentId
+```
+
+### 配置文件示例
+
+```json
+{
+  "channels": {
+    "wecom": {
+      "enabled": true,
+      "token": "your-token",
+      "encodingAesKey": "your-aes-key",
+      "webhookPath": "/wecom",
+      "corpId": "ww1234567890abcdef",
+      "secret": "your-app-secret",
+      "agentId": "1000001"
+    }
+  }
+}
+```
+
+> ⚠️ **权限说明**：通讯录 API 需要在企业微信后台为应用配置「通讯录」读取权限。
+
 ## 🤖 动态 Agent 路由
 
 OpenClaw 会通过解析 `SessionKey` 来决定本次消息由哪个 Agent 处理。本插件实现"按人/按群隔离"：
