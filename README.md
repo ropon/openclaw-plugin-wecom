@@ -9,9 +9,38 @@
 - 🌊 **Streaming Output**: Smooth typewriter-style responses using WeCom's latest AI bot streaming mechanism.
 - 🤖 **Dynamic Agent Management**: Automatically creates independent Agents per user/group chat with isolated workspaces and conversation contexts.
 - 👥 **Group Chat Integration**: Full support for group messages with @mention triggering.
+- 📷 **Multimedia Input Support**: Process images, voice messages, and mixed content (image+text) with automatic decryption.
 - 🛠️ **Command Support**: Built-in commands (`/new`, `/status`, `/help`, `/compact`) with configurable whitelist.
 - 🔒 **Security**: Complete support for WeCom message encryption/decryption and sender verification.
 - ⚡ **Async Processing**: High-performance async architecture ensures gateway responsiveness during AI inference.
+
+## 📷 Multimedia Message Support
+
+The plugin supports various message types from WeCom:
+
+| Message Type       | Input Support | Image Decrypt  | AI Processing    |
+| ------------------ | ------------- | -------------- | ---------------- |
+| Text               | ✅            | -              | ✅ Full support  |
+| Image              | ✅            | ✅ AES-256-CBC | ✅ Base64 for AI |
+| Voice              | ✅            | -              | 📝 Prompt only   |
+| Mixed (Image+Text) | ✅            | ✅             | ✅ Multimodal    |
+| File               | ✅            | -              | 📝 Prompt only   |
+| Video              | ✅            | -              | 📝 Prompt only   |
+
+### Image Processing
+
+WeCom AI Bot encrypts images using AES-256-CBC. The plugin automatically:
+
+1. Downloads encrypted image from WeCom
+2. Decrypts using your `encodingAesKey`
+3. Converts to Base64 for AI multimodal processing
+4. Cleans up temporary files periodically
+
+### Voice Messages
+
+Voice messages are downloaded and stored temporarily. By default, a friendly prompt is returned since voice transcription requires external services.
+
+To enable voice transcription, integrate with external ASR services in `voice-api.js`.
 
 ## 🚀 Quick Start
 
@@ -35,6 +64,7 @@ vim .env
 ```
 
 The deployment script automatically:
+
 - Creates data directories and sets permissions
 - Generates configuration files
 - Starts Docker containers
@@ -53,11 +83,12 @@ OPENCLAW_DATA_DIR=/data/openclaw    # Custom data directory
 ```
 
 - **OpenClaw State Directory**: `/data/openclaw/`
-- **Dynamic Agent Workspace**: `/data/openclaw/.openclaw/` 
+- **Dynamic Agent Workspace**: `/data/openclaw/.openclaw/`
 - **Plugin Directory**: `/data/openclaw/extensions/`
 - **Canvas Data**: `/data/openclaw/canvas/`
 
 Benefits:
+
 - ✅ All Agent workspace data stored on data disk, avoiding system disk usage
 - ✅ Independent Agent files for each user/group managed under unified path
 - ✅ Easy backup, migration, and expansion
@@ -113,13 +144,20 @@ openclaw-plugin-wecom/
 │   ├── openclaw.json.base      # Base configuration template
 │   └── openclaw.json.template  # Full configuration template
 ├── Dockerfile                   # OpenClaw image build file
-├── local.sh                     # Local image build script
 ├── index.js                     # Plugin entry point
-├── webhook.js                   # WeCom HTTP communication
+├── webhook.js                   # WeCom HTTP communication & message parsing
+├── message-handler.js           # Unified multimedia message processor
 ├── dynamic-agent.js             # Dynamic Agent routing
 ├── stream-manager.js            # Streaming response management
-├── crypto.js                    # WeCom encryption
-└── client.js                    # Client logic
+├── crypto.js                    # WeCom message encryption/decryption
+├── client.js                    # Response URL client
+├── contact-api.js               # Address book API (user/department info)
+├── app-message.js               # Proactive message push API
+├── media-api.js                 # Media upload/download management
+├── voice-api.js                 # Voice message processing
+├── image-decrypt.js             # WeCom image decryption
+├── utils.js                     # Utility functions
+└── logger.js                    # Logging module
 ```
 
 ## 🤖 Dynamic Agent Routing
@@ -135,12 +173,12 @@ The plugin implements per-user/per-group isolation:
 
 Under `channels.wecom`:
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `dynamicAgents.enabled` | boolean | `true` | Enable dynamic Agents |
-| `dm.createAgentOnFirstMessage` | boolean | `true` | Use dynamic Agent for DMs |
-| `groupChat.enabled` | boolean | `true` | Enable group chat handling |
-| `groupChat.requireMention` | boolean | `true` | Require @mention in groups |
+| Option                         | Type    | Default | Description                |
+| ------------------------------ | ------- | ------- | -------------------------- |
+| `dynamicAgents.enabled`        | boolean | `true`  | Enable dynamic Agents      |
+| `dm.createAgentOnFirstMessage` | boolean | `true`  | Use dynamic Agent for DMs  |
+| `groupChat.enabled`            | boolean | `true`  | Enable group chat handling |
+| `groupChat.requireMention`     | boolean | `true`  | Require @mention in groups |
 
 To route all messages to the default Agent:
 
@@ -173,12 +211,12 @@ To prevent regular users from executing sensitive Gateway management commands vi
 }
 ```
 
-| Command | Description | Security Level |
-|---------|-------------|----------------|
-| `/new` | Reset conversation, start fresh | ✅ User-level |
-| `/compact` | Compress conversation context | ✅ User-level |
-| `/help` | Show help information | ✅ User-level |
-| `/status` | Show Agent status | ✅ User-level |
+| Command    | Description                     | Security Level |
+| ---------- | ------------------------------- | -------------- |
+| `/new`     | Reset conversation, start fresh | ✅ User-level  |
+| `/compact` | Compress conversation context   | ✅ User-level  |
+| `/help`    | Show help information           | ✅ User-level  |
+| `/status`  | Show Agent status               | ✅ User-level  |
 
 > ⚠️ **Security Note**: Do not add `/gateway`, `/plugins`, or other management commands to the whitelist to prevent regular users from gaining Gateway instance admin privileges.
 

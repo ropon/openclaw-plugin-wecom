@@ -9,9 +9,38 @@
 - 🌊 **流式输出 (Streaming)**: 基于企业微信最新的 AI 机器人流式分片机制，实现流畅的打字机式回复体验。
 - 🤖 **动态 Agent 管理**: 默认按"每个私聊用户 / 每个群聊"自动创建独立 Agent。每个 Agent 拥有独立的工作区与对话上下文，实现更强的数据隔离。
 - 👥 **群聊深度集成**: 支持群聊消息解析，可通过 @提及（At-mention）精准触发机器人响应。
+- 📷 **多媒体消息支持**: 支持图片、语音、图文混合等多种消息类型，自动解密企业微信加密图片。
 - 🛠️ **指令增强**: 内置常用指令支持（如 `/new` 开启新会话、`/status` 查看状态等），并提供指令白名单配置功能。
 - 🔒 **安全与认证**: 完整支持企业微信消息加解密、URL 验证及发送者身份校验。
 - ⚡ **高性能异步处理**: 采用异步消息处理架构，确保即使在长耗时 AI 推理过程中，企业微信网关也能保持高响应性。
+
+## 📷 多媒体消息支持
+
+插件支持企业微信的多种消息类型：
+
+| 消息类型 | 输入支持 | 图片解密       | AI 处理          |
+| -------- | -------- | -------------- | ---------------- |
+| 文本     | ✅       | -              | ✅ 完整支持      |
+| 图片     | ✅       | ✅ AES-256-CBC | ✅ Base64 多模态 |
+| 语音     | ✅       | -              | 📝 返回提示      |
+| 图文混合 | ✅       | ✅             | ✅ 多模态        |
+| 文件     | ✅       | -              | 📝 返回提示      |
+| 视频     | ✅       | -              | 📝 返回提示      |
+
+### 图片处理
+
+企业微信 AI 机器人对图片使用 AES-256-CBC 加密。插件自动完成：
+
+1. 从企业微信下载加密图片
+2. 使用 `encodingAesKey` 解密
+3. 转换为 Base64 格式供 AI 多模态处理
+4. 定期清理临时文件
+
+### 语音消息
+
+语音消息会被下载并临时存储。由于语音转文字需要外部服务，默认会返回友好提示。
+
+如需启用语音转文字，可在 `voice-api.js` 中集成外部 ASR 服务。
 
 ## 🚀 快速开始
 
@@ -35,6 +64,7 @@ vim .env
 ```
 
 部署脚本会自动执行：
+
 - 创建数据目录和设置权限
 - 生成配置文件
 - 启动 Docker 容器
@@ -53,11 +83,12 @@ OPENCLAW_DATA_DIR=/data/openclaw    # 自定义数据目录
 ```
 
 - **OpenClaw 状态目录**：`/data/openclaw/`
-- **动态 Agent Workspace**：`/data/openclaw/.openclaw/` 
+- **动态 Agent Workspace**：`/data/openclaw/.openclaw/`
 - **插件目录**：`/data/openclaw/extensions/`
 - **Canvas 数据**：`/data/openclaw/canvas/`
 
 这意味着：
+
 - ✅ 所有 Agent 工作区数据存储在数据盘，避免占用系统盘空间
 - ✅ 每个用户/群聊的独立 Agent 文件都在统一路径下管理
 - ✅ 方便备份、迁移和扩容
@@ -113,13 +144,20 @@ openclaw-plugin-wecom/
 │   ├── openclaw.json.base      # 基础配置模板
 │   └── openclaw.json.template  # 完整配置模板
 ├── Dockerfile                   # OpenClaw 镜像构建文件
-├── local.sh                     # 本地镜像构建脚本
 ├── index.js                     # 插件入口
-├── webhook.js                   # 企业微信 HTTP 通信处理
+├── webhook.js                   # 企业微信 HTTP 通信与消息解析
+├── message-handler.js           # 统一多媒体消息处理器
 ├── dynamic-agent.js             # 动态 Agent 分配逻辑
 ├── stream-manager.js            # 流式回复管理
-├── crypto.js                    # 企业微信加密算法
-└── client.js                    # 客户端逻辑
+├── crypto.js                    # 企业微信消息加解密
+├── client.js                    # Response URL 客户端
+├── contact-api.js               # 通讯录 API（用户/部门信息）
+├── app-message.js               # 应用消息主动推送 API
+├── media-api.js                 # 素材上传/下载管理
+├── voice-api.js                 # 语音消息处理
+├── image-decrypt.js             # 企业微信图片解密
+├── utils.js                     # 工具函数
+└── logger.js                    # 日志模块
 ```
 
 ## 🤖 动态 Agent 路由
@@ -135,12 +173,12 @@ OpenClaw 会通过解析 `SessionKey` 来决定本次消息由哪个 Agent 处�
 
 配置在 `channels.wecom` 下：
 
-| 配置项 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `dynamicAgents.enabled` | boolean | `true` | 是否启用动态 Agent |
-| `dm.createAgentOnFirstMessage` | boolean | `true` | 私聊使用动态 Agent |
-| `groupChat.enabled` | boolean | `true` | 启用群聊处理 |
-| `groupChat.requireMention` | boolean | `true` | 群聊必须 @ 提及才响应 |
+| 配置项                         | 类型    | 默认值 | 说明                  |
+| ------------------------------ | ------- | ------ | --------------------- |
+| `dynamicAgents.enabled`        | boolean | `true` | 是否启用动态 Agent    |
+| `dm.createAgentOnFirstMessage` | boolean | `true` | 私聊使用动态 Agent    |
+| `groupChat.enabled`            | boolean | `true` | 启用群聊处理          |
+| `groupChat.requireMention`     | boolean | `true` | 群聊必须 @ 提及才响应 |
 
 如果需要所有消息进入默认 Agent：
 
@@ -173,12 +211,12 @@ OpenClaw 会通过解析 `SessionKey` 来决定本次消息由哪个 Agent 处�
 }
 ```
 
-| 指令 | 说明 | 安全级别 |
-|------|------|----------|
-| `/new` | 重置当前对话，开启全新会话 | ✅ 用户级 |
-| `/compact` | 压缩当前会话上下文 | ✅ 用户级 |
-| `/help` | 查看帮助信息 | ✅ 用户级 |
-| `/status` | 查看当前 Agent 状态 | ✅ 用户级 |
+| 指令       | 说明                       | 安全级别  |
+| ---------- | -------------------------- | --------- |
+| `/new`     | 重置当前对话，开启全新会话 | ✅ 用户级 |
+| `/compact` | 压缩当前会话上下文         | ✅ 用户级 |
+| `/help`    | 查看帮助信息               | ✅ 用户级 |
+| `/status`  | 查看当前 Agent 状态        | ✅ 用户级 |
 
 > ⚠️ **安全提示**：不要将 `/gateway`、`/plugins` 等管理指令添加到白名单，避免普通用户获得 Gateway 实例的管理权限。
 

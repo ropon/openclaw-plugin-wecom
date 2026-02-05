@@ -1,16 +1,18 @@
 {
   "models": {
     "providers": {
-      "${LLM_PROVIDER}": {
-        "baseUrl": "${LLM_BASE_URL}",
-        "apiKey": "${LLM_API_KEY}",
-        "api": "${LLM_API_TYPE}",
+      "anthropic": {
+        "baseUrl": "https://api.anthropic.com",
+        "apiKey": "xxx",
+        "api": "anthropic-messages",
         "models": [
           {
-            "id": "${LLM_MODEL_ID}",
-            "name": "${LLM_MODEL_ID}",
+            "id": "claude-sonnet-4-5",
+            "name": "claude-sonnet-4-5",
             "reasoning": false,
-            "input": ["text"],
+            "input": [
+              "text"
+            ],
             "cost": {
               "input": 0,
               "output": 0,
@@ -27,9 +29,9 @@
   "agents": {
     "defaults": {
       "model": {
-        "primary": "${LLM_PROVIDER}/${LLM_MODEL_ID}"
+        "primary": "anthropic/claude-sonnet-4-5"
       },
-      "workspace": "${OPENCLAW_DATA_DIR}/workspace",
+      "workspace": "/data/openclaw/workspace",
       "compaction": {
         "mode": "safeguard"
       },
@@ -42,16 +44,37 @@
         "scope": "agent",
         "workspaceAccess": "rw",
         "docker": {
+          "image": "my-openclaw-sandbox:latest",
           "network": "bridge",
-          "readOnlyRoot": true
+          "readOnlyRoot": true,
+          "env": {
+            "LANG": "C.UTF-8",
+            "PYTHONUNBUFFERED": "1"
+          },
+          "setupCommand": "",
+          "pidsLimit": 256,
+          "memory": "1g",
+          "memorySwap": "2g",
+          "cpus": 1,
+          "ulimits": {
+            "nofile": {
+              "soft": 1024,
+              "hard": 2048
+            },
+            "nproc": 256
+          },
+          "dns": [
+            "1.1.1.1",
+            "8.8.8.8"
+          ]
         },
         "prune": {
           "idleHours": 87600,
           "maxAgeDays": 3650
         }
       },
-      "userTimezone": "${USER_TIMEZONE}",
-      "timeFormat": "${TIME_FORMAT}"
+      "userTimezone": "Asia/Shanghai",
+      "timeFormat": "24"
     },
     "list": []
   },
@@ -81,28 +104,21 @@
   "channels": {
     "wecom": {
       "enabled": true,
-      "token": "${WECOM_TOKEN}",
-      "encodingAesKey": "${WECOM_ENCODING_AES_KEY}",
-      "webhookPath": "${WECOM_WEBHOOK_PATH}",
-      "corpId": "${WECOM_CORP_ID}",
-      "secret": "${WECOM_SECRET}",
-      "agentId": "${WECOM_AGENT_ID}",
-      "commands": {
-        "enabled": true,
-        "allowlist": ["/new", "/status", "/help", "/compact"]
-      }
+      "token": "xx",
+      "encodingAesKey": "xxx",
+      "webhookPath": "/wecom"
     }
   },
   "gateway": {
-    "port": ${GATEWAY_PORT},
-    "mode": "${GATEWAY_MODE}",
-    "bind": "${GATEWAY_BIND}",
+    "port": 18789,
+    "mode": "local",
+    "bind": "lan",
     "controlUi": {
       "allowInsecureAuth": true
     },
     "auth": {
       "mode": "token",
-      "token": "${GATEWAY_AUTH_TOKEN}"
+      "token": "xx"
     },
     "tailscale": {
       "mode": "off",
@@ -121,8 +137,7 @@
       }
     }
   },
-  "bindings": [],
   "canvasHost": {
-    "root": "${OPENCLAW_DATA_DIR}/canvas"
+    "root": "/data/openclaw/canvas"
   }
 }
